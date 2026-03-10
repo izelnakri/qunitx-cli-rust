@@ -51,7 +51,10 @@ async fn run_inner() -> Result<(), String> {
     let html_paths: Vec<String> = if extra_args.is_empty() {
         vec!["test/tests.html".into()]
     } else {
-        extra_args.into_iter().filter(|a| a.ends_with(".html")).collect()
+        extra_args
+            .into_iter()
+            .filter(|a| a.ends_with(".html"))
+            .collect()
     };
 
     let qunitx_config = serde_json::json!({
@@ -96,13 +99,16 @@ async fn run_inner() -> Result<(), String> {
     Ok(())
 }
 
-async fn write_package_json(project_root: &Path, qunitx_config: serde_json::Value) -> Result<(), String> {
+async fn write_package_json(
+    project_root: &Path,
+    qunitx_config: serde_json::Value,
+) -> Result<(), String> {
     let pkg_path = project_root.join("package.json");
     let content = tokio::fs::read_to_string(&pkg_path)
         .await
         .map_err(|e| format!("Error reading package.json: {e}"))?;
-    let mut pkg: serde_json::Value = serde_json::from_str(&content)
-        .map_err(|e| format!("Error parsing package.json: {e}"))?;
+    let mut pkg: serde_json::Value =
+        serde_json::from_str(&content).map_err(|e| format!("Error parsing package.json: {e}"))?;
 
     // Merge: existing qunitx config takes priority over defaults
     let merged = if let Some(existing) = pkg.get("qunitx").and_then(|v| v.as_object()) {

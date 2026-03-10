@@ -34,7 +34,9 @@ pub async fn build_bundle(test_files: &[PathBuf], output_dir: &Path) -> Result<P
         ])
         .status()
         .await
-        .map_err(|e| format!("Failed to spawn esbuild: {e}\n  Hint: install it with `npm i -D esbuild`"))?;
+        .map_err(|e| {
+            format!("Failed to spawn esbuild: {e}\n  Hint: install it with `npm i -D esbuild`")
+        })?;
 
     if !status.success() {
         return Err(format!(

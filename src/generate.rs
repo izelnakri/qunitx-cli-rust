@@ -56,10 +56,7 @@ async fn run_inner() -> Result<(), String> {
             .map_err(|e| format!("Error creating {}: {e}", parent.display()))?;
     }
 
-    let module_name = path
-        .file_stem()
-        .and_then(|s| s.to_str())
-        .unwrap_or(&name);
+    let module_name = path.file_stem().and_then(|s| s.to_str()).unwrap_or(&name);
     let content = TEST_TEMPLATE.replace("{{moduleName}}", module_name);
 
     tokio::fs::write(&path, content)

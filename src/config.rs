@@ -93,7 +93,7 @@ impl Config {
             command,
             project_root: std::env::current_dir()
                 .ok()
-                .and_then(|d| find_project_root(d))
+                .and_then(find_project_root)
                 .unwrap_or_default(),
             output: "tmp".into(),
             timeout_ms: 20000,

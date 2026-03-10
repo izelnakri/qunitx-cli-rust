@@ -76,8 +76,5 @@ fn collect_glob(pattern: &str, base: &Path, out: &mut Vec<PathBuf>) {
 }
 
 fn is_test_file(path: &Path) -> bool {
-    matches!(
-        path.extension().and_then(|e| e.to_str()),
-        Some("js" | "ts")
-    )
+    matches!(path.extension().and_then(|e| e.to_str()), Some("js" | "ts"))
 }

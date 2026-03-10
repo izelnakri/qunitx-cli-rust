@@ -7,8 +7,7 @@ use std::{
 use tokio::sync::{broadcast, mpsc, oneshot, Mutex, RwLock};
 
 use crate::{
-    browser,
-    bundler,
+    browser, bundler,
     config::Config,
     server::{self, GroupState},
     tap::{self, Counter},
@@ -86,7 +85,11 @@ pub async fn run(config: Config) -> i32 {
         }
     }
     if config.debug {
-        eprintln!("# Bundled {} group(s) in {}ms", num_groups, build_start.elapsed().as_millis());
+        eprintln!(
+            "# Bundled {} group(s) in {}ms",
+            num_groups,
+            build_start.elapsed().as_millis()
+        );
     }
 
     // ── Load HTML template ───────────────────────────────────────────────────
@@ -111,7 +114,16 @@ pub async fn run(config: Config) -> i32 {
         };
 
         run_handles.push(tokio::spawn(async move {
-            run_group(bundle_path, output_dir, html_template, chrome, tap_tx, counter, cfg).await
+            run_group(
+                bundle_path,
+                output_dir,
+                html_template,
+                chrome,
+                tap_tx,
+                counter,
+                cfg,
+            )
+            .await
         }));
     }
 
@@ -146,7 +158,11 @@ pub async fn run(config: Config) -> i32 {
         }
     }
 
-    if final_counter.fail_count > 0 || had_fatal { 1 } else { 0 }
+    if final_counter.fail_count > 0 || had_fatal {
+        1
+    } else {
+        0
+    }
 }
 
 // ── Per-group runner ─────────────────────────────────────────────────────────
@@ -168,7 +184,14 @@ async fn run_group(
     cfg: GroupRunConfig,
 ) -> Result<(), String> {
     let (acceptor, port) = server::bind().await?;
-    let html = build_html(&html_template, port, cfg.timeout_ms, cfg.fail_fast, &bundle_path).await?;
+    let html = build_html(
+        &html_template,
+        port,
+        cfg.timeout_ms,
+        cfg.fail_fast,
+        &bundle_path,
+    )
+    .await?;
 
     let (done_tx, done_rx) = oneshot::channel::<()>();
     let (broadcast_tx, _) = broadcast::channel::<String>(16);
@@ -252,7 +275,14 @@ async fn run_watch_inner(config: &Config, chrome_path: &str) -> Result<i32, Stri
 
     // ── Bind server (stays alive for the whole session) ──────────────────────
     let (acceptor, port) = server::bind().await?;
-    let html = build_html(&html_template, port, config.timeout_ms, config.fail_fast, &bundle_path).await?;
+    let html = build_html(
+        &html_template,
+        port,
+        config.timeout_ms,
+        config.fail_fast,
+        &bundle_path,
+    )
+    .await?;
 
     // ── Shared channels ──────────────────────────────────────────────────────
     let (tap_tx, mut tap_rx) = mpsc::unbounded_channel::<String>();
@@ -408,7 +438,15 @@ async fn run_watch_inner(config: &Config, chrome_path: &str) -> Result<i32, Stri
         // ── Phase 4: rebuild bundle ───────────────────────────────────────────
         match bundler::build_bundle(&trigger_files, &output_dir).await {
             Ok(new_bundle) => {
-                match build_html(&html_template, port, config.timeout_ms, config.fail_fast, &new_bundle).await {
+                match build_html(
+                    &html_template,
+                    port,
+                    config.timeout_ms,
+                    config.fail_fast,
+                    &new_bundle,
+                )
+                .await
+                {
                     Ok(new_html) => *state.html.write().await = new_html,
                     Err(e) => eprintln!("# HTML build error: {e}"),
                 }
@@ -463,7 +501,7 @@ fn derive_watch_paths(config: &Config) -> Vec<PathBuf> {
     dirs.into_iter().collect()
 }
 
-fn should_trigger(event: &notify::Event, output_dir: &Path) -> bool {
+pub fn should_trigger(event: &notify::Event, output_dir: &Path) -> bool {
     use notify::event::EventKind;
     matches!(
         event.kind,
@@ -517,7 +555,7 @@ fn start_keyboard_watcher(tx: mpsc::UnboundedSender<String>) {
 
 // ── HTML generation ──────────────────────────────────────────────────────────
 
-const DEFAULT_HTML: &str = r#"<!DOCTYPE html>
+pub const DEFAULT_HTML: &str = r#"<!DOCTYPE html>
 <html>
   <head>
     <meta charset="utf-8">
@@ -650,7 +688,7 @@ __QUNITX_BUNDLE__
   }
 </script>"#;
 
-async fn load_html_template(config: &Config) -> String {
+pub async fn load_html_template(config: &Config) -> String {
     for path in &config.html_paths {
         if let Ok(content) = tokio::fs::read_to_string(path).await {
             if content.contains("{{content}}") {
@@ -665,7 +703,7 @@ async fn load_html_template(config: &Config) -> String {
     DEFAULT_HTML.to_owned()
 }
 
-async fn build_html(
+pub async fn build_html(
     template: &str,
     port: u16,
     timeout_ms: u64,
@@ -681,7 +719,10 @@ async fn build_html(
     let runtime = RUNTIME_TEMPLATE
         .replace("__QUNITX_PORT__", &port.to_string())
         .replace("__QUNITX_TIMEOUT__", &timeout_ms.to_string())
-        .replace("__QUNITX_FAIL_FAST__", if fail_fast { "true" } else { "false" })
+        .replace(
+            "__QUNITX_FAIL_FAST__",
+            if fail_fast { "true" } else { "false" },
+        )
         .replace("__QUNITX_BUNDLE__", &escaped_bundle);
 
     Ok(template
@@ -689,14 +730,18 @@ async fn build_html(
         .replace("{{applicationName}}", "QUnitX"))
 }
 
-fn rewrite_asset_paths(html: &str, html_dir: &Path, project_root: &Path) -> String {
+pub fn rewrite_asset_paths(html: &str, html_dir: &Path, project_root: &Path) -> String {
     let mut result = html.to_owned();
     for attr_prefix in &[r#"href=""#, r#"src=""#] {
         let mut offset = 0;
         loop {
-            let Some(found) = result[offset..].find(attr_prefix) else { break };
+            let Some(found) = result[offset..].find(attr_prefix) else {
+                break;
+            };
             let val_start = offset + found + attr_prefix.len();
-            let Some(val_end_rel) = result[val_start..].find('"') else { break };
+            let Some(val_end_rel) = result[val_start..].find('"') else {
+                break;
+            };
             let val = result[val_start..val_start + val_end_rel].to_owned();
 
             if val.starts_with("http://")
@@ -724,11 +769,13 @@ fn rewrite_asset_paths(html: &str, html_dir: &Path, project_root: &Path) -> Stri
     result
 }
 
-fn normalize_path(path: &Path) -> PathBuf {
+pub fn normalize_path(path: &Path) -> PathBuf {
     let mut out = PathBuf::new();
     for c in path.components() {
         match c {
-            std::path::Component::ParentDir => { out.pop(); }
+            std::path::Component::ParentDir => {
+                out.pop();
+            }
             std::path::Component::CurDir => {}
             other => out.push(other),
         }
@@ -738,7 +785,7 @@ fn normalize_path(path: &Path) -> PathBuf {
 
 // ── Group helpers ────────────────────────────────────────────────────────────
 
-fn split_into_groups(files: &[PathBuf], n: usize) -> Vec<Vec<PathBuf>> {
+pub fn split_into_groups(files: &[PathBuf], n: usize) -> Vec<Vec<PathBuf>> {
     let mut groups: Vec<Vec<PathBuf>> = (0..n).map(|_| Vec::new()).collect();
     for (i, file) in files.iter().enumerate() {
         groups[i % n].push(file.clone());
@@ -747,7 +794,7 @@ fn split_into_groups(files: &[PathBuf], n: usize) -> Vec<Vec<PathBuf>> {
     groups
 }
 
-fn group_output_dir(base: &Path, index: usize, total: usize) -> PathBuf {
+pub fn group_output_dir(base: &Path, index: usize, total: usize) -> PathBuf {
     if total == 1 {
         base.to_path_buf()
     } else {

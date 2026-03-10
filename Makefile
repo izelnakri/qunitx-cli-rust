@@ -37,8 +37,12 @@ doc:
 	cargo doc --no-deps --open
 
 # Preview the changelog, confirm, then tag + publish.
-# Requires: git-cliff, cargo-release
+# Requires git-cliff and cargo-release (available via `nix develop`).
 release:
+	@if [ -z "$$IN_NIX_SHELL" ]; then \
+		echo "==> Entering nix develop (git-cliff, cargo-release)..."; \
+		exec nix develop --command $(MAKE) release LEVEL=$(LEVEL); \
+	fi
 	$(MAKE) check
 	@printf "\n=== Release Preview (level: $(LEVEL)) ===\n\n"
 	@git-cliff --bump --unreleased 2>/dev/null || true

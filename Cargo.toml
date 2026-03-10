@@ -2,6 +2,14 @@
 name = "qunitx"
 version = "0.1.0"
 edition = "2021"
+description = "Fast QUnit/QUnitX browser test runner"
+license = "MIT"
+repository = "https://github.com/izelnakri/qunitx-cli-rust"
+homepage = "https://github.com/izelnakri/qunitx-cli-rust"
+
+[lib]
+name = "qunitx"
+path = "src/lib.rs"
 
 [[bin]]
 name = "qunitx"
@@ -11,6 +19,8 @@ path = "src/main.rs"
 opt-level = 3
 lto = "thin"
 codegen-units = 1
+strip = true
+panic = "abort"
 
 [dependencies]
 tokio        = { version = "1",   features = ["full"] }
@@ -21,3 +31,18 @@ futures-util = { version = "0.3", default-features = false, features = ["sink", 
 globset      = "0.4"
 walkdir      = "2"
 notify       = "6"
+
+[dev-dependencies]
+tempfile = "3"
+tokio    = { version = "1", features = ["full"] }
+
+[package.metadata.release]
+# git-cliff writes CHANGELOG.md as part of the release commit.
+pre-release-hook = ["git-cliff", "--tag", "v{{version}}", "-o", "CHANGELOG.md"]
+# `make release` already runs `make check` before invoking cargo-release,
+# so skipping the duplicate test run here avoids redundant compilation.
+verify = false
+
+[package.metadata.binstall]
+pkg-url = "{ repo }/releases/download/v{ version }/{ name }-{ target }{ archive-suffix }"
+bin-dir = "{ bin }{ binary-ext }"

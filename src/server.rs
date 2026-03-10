@@ -73,7 +73,9 @@ pub fn serve(acceptor: poem::listener::TcpAcceptor, state: Arc<GroupState>) -> o
         let _ = Server::new_with_acceptor(acceptor)
             .run_with_graceful_shutdown(
                 app,
-                async move { let _ = shutdown_rx.await; },
+                async move {
+                    let _ = shutdown_rx.await;
+                },
                 None,
             )
             .await;
@@ -85,10 +87,7 @@ pub fn serve(acceptor: poem::listener::TcpAcceptor, state: Arc<GroupState>) -> o
 // ── Route handlers ───────────────────────────────────────────────────────────
 
 #[handler]
-async fn serve_html(
-    req: &Request,
-    state: Data<&Arc<GroupState>>,
-) -> impl IntoResponse {
+async fn serve_html(req: &Request, state: Data<&Arc<GroupState>>) -> impl IntoResponse {
     if state.debug {
         eprintln!("# server: {} {}", req.method(), req.uri().path());
     }
@@ -255,7 +254,9 @@ fn normalize_path(path: &Path) -> PathBuf {
     let mut out = PathBuf::new();
     for component in path.components() {
         match component {
-            std::path::Component::ParentDir => { out.pop(); }
+            std::path::Component::ParentDir => {
+                out.pop();
+            }
             std::path::Component::CurDir => {}
             other => out.push(other),
         }

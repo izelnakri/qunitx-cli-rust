@@ -1,14 +1,4 @@
-mod browser;
-mod bundler;
-mod config;
-mod discover;
-mod generate;
-mod init;
-mod runner;
-mod server;
-mod tap;
-
-use config::{Command, Config};
+use qunitx::config::{Command, Config};
 
 #[tokio::main]
 async fn main() {
@@ -21,10 +11,13 @@ async fn main() {
     };
 
     let exit_code = match config.command {
-        Command::Help => { print_help(); 0 }
-        Command::Init => init::run().await,
-        Command::Generate => generate::run().await,
-        Command::Run => runner::run(config).await,
+        Command::Help => {
+            print_help();
+            0
+        }
+        Command::Init => qunitx::init::run().await,
+        Command::Generate => qunitx::generate::run().await,
+        Command::Run => qunitx::runner::run(config).await,
     };
 
     std::process::exit(exit_code);
@@ -38,7 +31,9 @@ fn print_help() {
     println!();
     println!("COMMANDS:");
     println!("  init               Bootstrap test/tests.html, tsconfig.json, and package.json qunitx config");
-    println!("  new <file>         Generate a test file with boilerplate  (aliases: generate, g, n)");
+    println!(
+        "  new <file>         Generate a test file with boilerplate  (aliases: generate, g, n)"
+    );
     println!("  help               Show this help message");
     println!();
     println!("OPTIONS:");
@@ -47,7 +42,9 @@ fn print_help() {
     println!("  --timeout=<ms>     Test timeout in ms (default: 20000)");
     println!("  --output=<dir>     Bundle output directory (default: tmp)");
     println!("  --failFast         Stop after first failing test");
-    println!("  --port=<n>         HTTP server port (default: 1234, OS-assigned in concurrent mode)");
+    println!(
+        "  --port=<n>         HTTP server port (default: 1234, OS-assigned in concurrent mode)"
+    );
     println!("  --before=<file>    Run Node.js script before tests");
     println!("  --after=<file>     Run Node.js script after tests");
     println!();
@@ -65,5 +62,7 @@ fn print_help() {
     println!("  qunitx new test/checkout-test.ts");
     println!();
     println!("CONFIG (package.json `qunitx` field):");
-    println!("  {{ \"inputs\": [\"test/\"], \"timeout\": 20000, \"failFast\": false, \"port\": 1234 }}");
+    println!(
+        "  {{ \"inputs\": [\"test/\"], \"timeout\": 20000, \"failFast\": false, \"port\": 1234 }}"
+    );
 }

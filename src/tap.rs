@@ -90,20 +90,14 @@ pub fn display_test_result(
         "failed" => {
             counter.fail_count += 1;
             tap_tx
-                .send(format!(
-                    "not ok {n} {name} # ({:.0} ms)",
-                    details.runtime
-                ))
+                .send(format!("not ok {n} {name} # ({:.0} ms)", details.runtime))
                 .ok();
 
             for (i, assertion) in assertions.iter().enumerate() {
                 if assertion.passed || assertion.todo == Some(true) {
                     continue;
                 }
-                let stack_location = assertion
-                    .stack
-                    .as_deref()
-                    .and_then(|s| extract_stack_location(s));
+                let stack_location = assertion.stack.as_deref().and_then(extract_stack_location);
 
                 let yaml = yaml_dump([
                     ("name", yaml_str(&format!("Assertion #{}", i + 1))),
@@ -196,13 +190,12 @@ fn yaml_str(s: &str) -> String {
     }
     // Quote if the value could be misread as another YAML type, or contains
     // characters that need escaping.
-    let needs_quote = matches!(
-        s,
-        "null" | "true" | "false" | "yes" | "no" | "on" | "off"
-    ) || s.starts_with([
-        ' ', '"', '\'', '{', '[', '|', '>', '!', '&', '*', '#', '?', ':', '-', ',', '%', '@',
-        '`',
-    ]) || s.contains(": ")
+    let needs_quote = matches!(s, "null" | "true" | "false" | "yes" | "no" | "on" | "off")
+        || s.starts_with([
+            ' ', '"', '\'', '{', '[', '|', '>', '!', '&', '*', '#', '?', ':', '-', ',', '%', '@',
+            '`',
+        ])
+        || s.contains(": ")
         || s.contains(" #");
 
     if needs_quote {
