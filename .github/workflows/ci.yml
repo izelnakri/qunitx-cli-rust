@@ -117,3 +117,78 @@ jobs:
             }}
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
+
+  # ── Benchmarks (main only) ───────────────────────────────────────────────────
+  # Two phases:
+  #   1. Criterion unit benchmarks — measure pure-Rust pipeline stages
+  #      (discover, TAP, HTML generation, path helpers, config parsing).
+  #      Results are archived as a baseline artifact for local comparison.
+  #   2. E2E hyperfine comparison — measures total wall-clock time for a real
+  #      test suite run: qunitx (Rust) vs qunitx-cli (Node.js).  Chrome,
+  #      esbuild, and the test fixtures are the same for both tools so the
+  #      comparison is fair.  Results are exported as Markdown.
+  #
+  # GitHub-hosted runners have too much variance for regression detection here.
+  # Use `cargo bench --bench pipeline -- --baseline current` locally for that.
+  benchmark:
+    if: github.ref == 'refs/heads/main'
+    needs: [lint, test, build]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+
+      # ── Phase 1: criterion unit benchmarks ───────────────────────────────────
+      - name: Run unit benchmarks
+        run: cargo bench --bench pipeline -- --save-baseline current
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: criterion-baseline
+          path: target/criterion
+          retention-days: 30
+
+      # ── Phase 2: E2E comparison — qunitx (Rust) vs qunitx-cli (Node.js) ─────
+      - name: Install hyperfine
+        uses: taiki-e/install-action@v2
+        with:
+          tool: hyperfine
+
+      # Reuse the already-compiled musl binary — no cargo build needed.
+      - uses: actions/download-artifact@v4
+        with:
+          name: qunitx-linux-musl
+          path: dist
+      - name: Extract qunitx binary
+        run: tar xzf dist/qunitx-linux-musl.tar.gz -C dist && chmod +x dist/qunitx
+
+      # Install qunitx-cli (Node.js) and esbuild into the fixture project.
+      # npm ci reproduces the exact locked versions so the comparison is stable.
+      - name: Install fixture dependencies
+        run: cd example && npm ci
+
+      # Both CLIs use the same Chrome binary, esbuild, and test files.
+      # --warmup 2: let Chrome's JIT warm up and avoid cold-cache skew.
+      # --runs 5:   enough samples for a meaningful median on a shared runner.
+      # We use `node node_modules/.bin/qunitx` so Node.js startup is included
+      # on both sides of the comparison (Rust has no equivalent overhead).
+      - name: E2E comparison benchmark
+        run: |
+          cd example
+          hyperfine \
+            --warmup 2 \
+            --runs 5 \
+            --export-markdown ../bench-e2e.md \
+            --command-name "qunitx (Rust, musl)" \
+              "../dist/qunitx test/catalog-test.ts test/checkout-test.ts test/inventory-test.ts" \
+            --command-name "qunitx-cli (Node.js $(node --version))" \
+              "node node_modules/.bin/qunitx test/catalog-test.ts test/checkout-test.ts test/inventory-test.ts"
+          echo "### E2E benchmark results" && cat ../bench-e2e.md
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: bench-e2e
+          path: bench-e2e.md
+          retention-days: 30

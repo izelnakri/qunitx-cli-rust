@@ -13,14 +13,14 @@ pub struct Counter {
 
 // ── WebSocket event types ─────────────────────────────────────────────────────
 
-#[derive(Deserialize)]
+#[derive(Clone, Deserialize)]
 pub struct WsEvent {
     pub event: String,
     pub details: Option<Value>,
     pub abort: Option<bool>,
 }
 
-#[derive(Deserialize)]
+#[derive(Clone, Deserialize)]
 #[serde(default)]
 pub struct TestEndDetails {
     #[serde(rename = "fullName")]
@@ -46,7 +46,7 @@ impl Default for TestEndDetails {
     }
 }
 
-#[derive(Deserialize, Default)]
+#[derive(Clone, Deserialize, Default)]
 #[serde(default)]
 pub struct AssertionDetail {
     pub passed: bool,
