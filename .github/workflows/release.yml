@@ -1,0 +1,136 @@
+# Release Binaries
+
+name: Release Binaries
+
+# Builds native binaries for every major platform and publishes them on
+# versioned tag pushes (e.g. v1.2.3).
+
+on:
+  push:
+    tags: ['v*']
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  # ── Build ────────────────────────────────────────────────────────────────────
+  build:
+    name: Build · ${{ matrix.target }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # Linux glibc — preferred by binstall on mainstream distros
+          - target: x86_64-unknown-linux-gnu
+            os: ubuntu-latest
+            cross: false
+
+          # Linux musl — statically linked, runs on Alpine / musl-based distros
+          - target: x86_64-unknown-linux-musl
+            os: ubuntu-latest
+            cross: false
+
+          - target: aarch64-unknown-linux-musl
+            os: ubuntu-latest
+            cross: true   # cross-compiled via the `cross` Docker toolchain
+
+          # macOS ARM (macos-14+ runner is ARM64)
+          - target: aarch64-apple-darwin
+            os: macos-latest
+            cross: false
+
+          # Windows
+          - target: x86_64-pc-windows-msvc
+            os: windows-latest
+            cross: false
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+
+      - name: Ensure Rust target stdlib is installed
+        if: "!matrix.cross"
+        run: rustup target add ${{ matrix.target }}
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          key: release-${{ matrix.target }}
+
+      - name: Install musl toolchain
+        if: contains(matrix.target, 'musl') && !matrix.cross
+        run: sudo apt-get install -y musl-tools
+
+      - name: Install cross
+        if: matrix.cross
+        uses: taiki-e/install-action@v2
+        with:
+          tool: cross
+
+      - name: Build
+        shell: bash
+        env:
+          CARGO_PROFILE_RELEASE_LTO: fat
+          CARGO_PROFILE_RELEASE_CODEGEN_UNITS: "1"
+          CARGO_PROFILE_RELEASE_OPT_LEVEL: "3"
+          CARGO_PROFILE_RELEASE_PANIC: abort
+          CARGO_PROFILE_RELEASE_STRIP: symbols
+        run: |
+          if [[ "${{ matrix.cross }}" == "true" ]]; then
+            cross build --release --target ${{ matrix.target }}
+          else
+            cargo build --release --target ${{ matrix.target }}
+          fi
+
+      - name: Package (Unix)
+        if: runner.os != 'Windows'
+        run: >
+          tar czf qunitx-${{ matrix.target }}.tar.gz
+          -C target/${{ matrix.target }}/release qunitx
+
+      - name: Package (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: >
+          Compress-Archive
+          -Path   target/${{ matrix.target }}/release/qunitx.exe
+          -DestinationPath qunitx-${{ matrix.target }}.zip
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: qunitx-${{ matrix.target }}
+          path: qunitx-${{ matrix.target }}.*
+
+  # ── Publish ──────────────────────────────────────────────────────────────────
+  publish:
+    name: Publish release
+    needs: [build]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - uses: actions/download-artifact@v4
+        with:
+          merge-multiple: true
+          path: artifacts
+
+      - name: Generate SHA-256 checksums
+        run: cd artifacts && sha256sum * > checksums.txt
+
+      - name: Upload artifacts to versioned release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          gh release create "${{ github.ref_name }}" \
+            --title "${{ github.ref_name }}" \
+            --generate-notes 2>/dev/null || true
+          gh release upload "${{ github.ref_name }}" --clobber artifacts/*

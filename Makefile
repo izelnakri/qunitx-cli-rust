@@ -2,7 +2,7 @@
 
 LEVEL ?= patch
 
-.PHONY: help fix check fmt test build doc release
+.PHONY: help fix check fmt test build doc demo release
 
 help:
 	@echo "Usage: make <target> [LEVEL=patch|minor|major]"
@@ -13,6 +13,7 @@ help:
 	@echo "  test     Run all tests"
 	@echo "  build    Build the project"
 	@echo "  doc      Build and open API documentation"
+	@echo "  demo     Re-record demo/demo.gif via VHS"
 	@echo "  release  Preview changelog, confirm, then generate CHANGELOG and publish (LEVEL=patch)"
 
 fix:
@@ -35,6 +36,9 @@ build:
 
 doc:
 	cargo doc --no-deps --open
+
+demo:
+	vhs demo/demo.tape
 
 # Preview the changelog, confirm, then tag + publish.
 # Requires git-cliff and cargo-release (available via `nix develop`).

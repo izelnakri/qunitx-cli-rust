@@ -2,7 +2,7 @@
   description = "Fast QUnit/QUnitX browser test runner";
 
   inputs = {
-    nixpkgs.url = "github:NixOS/nixpkgs/nixpkgs-unstable";
+    nixpkgs.url = "github:NixOS/nixpkgs/nixos-25.11";
     flake-utils.url = "github:numtide/flake-utils";
     crane.url = "github:ipetkov/crane";
     rust-overlay = {
@@ -75,6 +75,10 @@
           RUST_SRC_PATH = "${rustToolchain}/lib/rustlib/src/rust/library";
           # Let qunitx find the Nix-managed Chromium without PATH scanning.
           CHROME_BIN = "${pkgs.chromium}/bin/chromium";
+
+          shellHook = ''
+            export PS1="\[\033[1;34m\][qunitx]\[\033[0m\] \[\033[1;32m\]\w\[\033[0m\] \$ "
+          '';
         };
 
         checks = {
