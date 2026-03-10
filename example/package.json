@@ -1,0 +1,15 @@
+{
+  "name": "bookstore-tests",
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "test:node": "node --test test/index.ts",
+    "test:deno": "deno test --allow-read --allow-env --allow-run test/index.ts",
+    "test:browser": "node_modules/.bin/qunitx test/index.ts",
+    "test": "bash -c 'npm run test:node; r1=$?; npm run test:browser; r2=$?; npm run test:deno; r3=$?; exit $(( r1 | r2 | r3 ))'"
+  },
+  "devDependencies": {
+    "qunitx": "^0.12.0",
+    "qunitx-cli": "^0.5.1"
+  }
+}

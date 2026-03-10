@@ -1,0 +1,8 @@
+{
+  "compilerOptions": {
+    "noImplicitAny": false
+  },
+  "imports": {
+    "qunitx": "https://esm.sh/qunitx@0.12.0/shims/deno/index.js"
+  }
+}
