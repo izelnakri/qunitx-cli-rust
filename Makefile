@@ -38,7 +38,9 @@ doc:
 	cargo doc --no-deps --open
 
 demo:
-	vhs demo/demo.tape
+	cargo build --release
+	@[ -d node_modules ] || npm install
+	PATH="$(shell pwd)/target/release:$$PATH" vhs demo/demo.tape
 
 # Preview the changelog, confirm, then tag + publish.
 # Requires git-cliff and cargo-release (available via `nix develop`).

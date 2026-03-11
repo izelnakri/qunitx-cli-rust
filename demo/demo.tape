@@ -6,14 +6,14 @@ Output demo/demo.gif
 Set Shell bash
 Set FontSize 15
 Set Width 900
-Set Height 800
+Set Height 600
 Set Theme "Dracula"
 Set Padding 20
 Set Framerate 24
 Set TypingSpeed 45ms
 
 Env FORCE_COLOR "1"
-Env PS1 "\033[1;34m[qunitx]\033[0m \033[1;32m$PWD\033[0m $ "
+Env PS1 "\033[1;34m[qunitx]\033[0m $ "
 
 # ── 1. Inspect the test file ──────────────────────────────────────────────────
 Type "# 1/7  TypeScript test file — no tsconfig needed"

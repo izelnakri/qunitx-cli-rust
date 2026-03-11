@@ -1,13 +1,22 @@
+<div align="center">
+
 # qunitx
 
 [![CI](https://github.com/izelnakri/qunitx-cli-rust/actions/workflows/ci.yml/badge.svg)](https://github.com/izelnakri/qunitx-cli-rust/actions/workflows/ci.yml)
 [![Crates.io](https://img.shields.io/crates/v/qunitx)](https://crates.io/crates/qunitx)
+[![Downloads](https://img.shields.io/crates/d/qunitx)](https://crates.io/crates/qunitx)
+[![Docs](https://img.shields.io/badge/docs-online-blue)](https://izelnakri.github.io/qunitx-cli-rust/docs/qunitx/)
+[![Sponsor](https://img.shields.io/badge/sponsor-%E2%99%A5-pink)](https://github.com/sponsors/izelnakri)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
+
+</div>
 
 Browser-based test runner for [QUnitX](https://github.com/izelnakri/qunitx) — bundles your JS/TS tests
 with esbuild, runs them in headless Chrome, and streams TAP output to the terminal.
 
 Single static binary. No Node.js, no npm, no runtime dependencies.
+
+![qunitx-cli-rust demo](demo/demo.gif)
 
 ## Features
 
@@ -169,6 +178,14 @@ make release LEVEL=patch    # bump version, update CHANGELOG, tag, push
 nix flake check             # run all CI checks (build, clippy, fmt, tests)
 nix develop                 # enter dev shell (includes Node.js, Chromium, dev tools)
 ```
+
+## Donate
+
+If qunitx saves you time, consider sponsoring development:
+
+**[github.com/sponsors/izelnakri](https://github.com/sponsors/izelnakri)**
+
+GitHub Sponsors has zero platform fees — 100% goes to the developer.
 
 ## License
 
