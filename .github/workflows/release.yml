@@ -40,6 +40,11 @@ jobs:
             os: macos-latest
             cross: false
 
+          # macOS Intel (macos-13 runner is x86_64)
+          - target: x86_64-apple-darwin
+            os: macos-13
+            cross: false
+
           # Windows
           - target: x86_64-pc-windows-msvc
             os: windows-latest

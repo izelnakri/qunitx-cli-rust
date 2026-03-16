@@ -2,3 +2,5 @@
 /tmp
 TODO
 node_modules
+/bin/qunitx
+/bin/qunitx.exe

@@ -48,6 +48,12 @@ pre-release-hook = ["git-cliff", "--tag", "v{{version}}", "-o", "CHANGELOG.md"]
 # so skipping the duplicate test run here avoids redundant compilation.
 verify = false
 
+# Keep package.json version in sync with Cargo.toml on every release.
+[[package.metadata.release.pre-release-replacements]]
+file    = "package.json"
+search  = '"version": "[^"]*"'
+replace = '"version": "{{version}}"'
+
 [package.metadata.binstall]
 pkg-url = "{ repo }/releases/download/v{ version }/{ name }-{ target }{ archive-suffix }"
 bin-dir = "{ bin }{ binary-ext }"

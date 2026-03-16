@@ -14,7 +14,7 @@ help:
 	@echo "  build    Build the project"
 	@echo "  doc      Build and open API documentation"
 	@echo "  demo     Re-record demo/demo.gif via VHS"
-	@echo "  release  Preview changelog, confirm, then generate CHANGELOG and publish (LEVEL=patch)"
+	@echo "  release  Preview changelog, confirm, bump version, publish to crates.io + npm (LEVEL=patch)"
 
 fix:
 	cargo fmt
@@ -60,7 +60,8 @@ release:
 			TAG=$$(git describe --tags --abbrev=0); \
 			awk '/^## \[/{if(found) exit; found=1} found' CHANGELOG.md > /tmp/release-notes.md; \
 			gh release create "$$TAG" --title "$$TAG" --notes-file /tmp/release-notes.md; \
-			rm -f /tmp/release-notes.md \
+			rm -f /tmp/release-notes.md; \
+			npm publish \
 		;; \
 		*) printf "Aborted.\n"; exit 1 ;; \
 	esac

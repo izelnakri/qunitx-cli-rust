@@ -118,6 +118,35 @@ jobs:
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
 
+  # ── Coverage ─────────────────────────────────────────────────────────────────
+  # Uses cargo-llvm-cov to instrument lib tests (in-module #[cfg(test)] blocks).
+  # Integration tests that require Chrome are excluded here. Generates LCOV for
+  # Codecov and an HTML report saved as an artifact for the pages job.
+  coverage:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+        with:
+          key: llvm-cov
+      - uses: taiki-e/install-action@v2
+        with:
+          tool: cargo-llvm-cov,nextest
+      - name: Collect coverage (lib tests only)
+        run: cargo llvm-cov nextest --lib --no-tests=pass --lcov --output-path lcov.info
+      - name: Generate HTML report
+        run: cargo llvm-cov report --html --output-dir coverage
+      - uses: codecov/codecov-action@v5
+        with:
+          files: lcov.info
+          fail_ci_if_error: false
+      - uses: actions/upload-artifact@v4
+        with:
+          name: coverage-html
+          path: coverage
+          retention-days: 7
+
   # ── Benchmarks (main only) ───────────────────────────────────────────────────
   # Two phases:
   #   1. Criterion unit benchmarks — measure pure-Rust pipeline stages
@@ -192,3 +221,141 @@ jobs:
           name: bench-e2e
           path: bench-e2e.md
           retention-days: 30
+
+  # ── GitHub Pages (main only) ──────────────────────────────────────────────────
+  # Assembles a static site with:
+  #   - demo.gif             (from the repo)
+  #   - Live TAP output      (captured by running the pre-built Rust binary)
+  #   - docs/                (rustdoc — cargo doc --no-deps)
+  #   - coverage/            (HTML report from the coverage job)
+  #
+  # Runs the binary against the bookstore example fixtures, the same suite
+  # used by the E2E benchmark, so the live output is realistic.
+  pages:
+    if: github.ref == 'refs/heads/main'
+    needs: [lint, test, build, coverage]
+    runs-on: ubuntu-latest
+    concurrency:
+      group: pages
+      cancel-in-progress: true
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+
+      # Reuse the already-compiled musl binary — no recompilation needed.
+      - uses: actions/download-artifact@v4
+        with:
+          name: qunitx-linux-musl
+          path: dist
+      - run: tar xzf dist/qunitx-linux-musl.tar.gz -C dist && chmod +x dist/qunitx
+
+      # Coverage HTML from the coverage job.
+      - uses: actions/download-artifact@v4
+        with:
+          name: coverage-html
+          path: coverage-html
+
+      # Runtime for the live demo: Node.js (esbuild + qunitx npm package) + Chrome.
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - uses: browser-actions/setup-chrome@v1
+
+      # PUPPETEER_SKIP_DOWNLOAD avoids a redundant Chromium download — Chrome is
+      # already on PATH from browser-actions/setup-chrome above.
+      - name: Install example dependencies
+        run: PUPPETEER_SKIP_DOWNLOAD=true npm ci
+        working-directory: example
+
+      # Capture a real run of the Rust binary against the bookstore test suite.
+      # Stderr (server diagnostics) is suppressed; stdout (TAP) is saved.
+      # `|| true` prevents the step from failing if any test fails.
+      - name: Capture live TAP output
+        run: ../dist/qunitx test/catalog-test.ts test/checkout-test.ts test/inventory-test.ts 2>/dev/null > ../tap-output.txt || true
+        working-directory: example
+
+      # Build rustdoc for the qunitx library crate.
+      - name: Generate API docs
+        run: cargo doc --no-deps
+
+      # Assemble the final _site directory and generate index.html via Python
+      # (html.escape handles &, <, > in the TAP output safely).
+      - name: Assemble _site
+        run: |
+          mkdir -p _site
+          cp demo/demo.gif _site/
+          cp -r target/doc _site/docs
+          cp -r coverage-html _site/coverage
+
+          cat > /tmp/gen_html.py << 'PYEOF'
+          import html as html_lib
+
+          with open('tap-output.txt') as f:
+              tap_raw = f.read().strip()
+
+          tap_esc = html_lib.escape(tap_raw)
+
+          header = '''<!DOCTYPE html>
+          <html lang="en">
+          <head>
+              <meta charset="UTF-8">
+              <meta name="viewport" content="width=device-width, initial-scale=1.0">
+              <title>qunitx</title>
+              <style>
+                  * { margin: 0; padding: 0; box-sizing: border-box; }
+                  html, body { height: 100%; font-family: system-ui, -apple-system, sans-serif; background: #0d1117; color: #e6edf3; }
+                  body { display: flex; flex-direction: column; min-height: 100vh; }
+                  header { flex-shrink: 0; display: flex; align-items: center; gap: 16px; padding: 12px 24px; background: #161b22; border-bottom: 1px solid #30363d; flex-wrap: wrap; }
+                  header h1 { font-size: 16px; font-weight: 700; letter-spacing: -.01em; }
+                  header a { font-size: 13px; color: #8b949e; text-decoration: none; }
+                  header a:hover { color: #e6edf3; }
+                  main { flex: 1; padding: 32px 24px; overflow: auto; }
+                  h2 { font-size: 13px; font-weight: 600; color: #8b949e; text-transform: uppercase; letter-spacing: .06em; margin-bottom: 16px; }
+                  img { max-width: 100%; border-radius: 8px; border: 1px solid #30363d; margin-bottom: 32px; }
+                  pre { font-family: ui-monospace, "JetBrains Mono", "Fira Code", monospace; font-size: clamp(12px, 2vw, 15px); line-height: 1.6; background: #161b22; border: 1px solid #30363d; border-radius: 8px; padding: 24px; overflow-x: auto; white-space: pre-wrap; word-break: break-all; }
+                  .prompt { color: #6e7681; user-select: none; }
+                  .cmd { color: #79c0ff; }
+              </style>
+          </head>
+          <body>
+              <header>
+                  <h1>qunitx</h1>
+                  <a href="https://github.com/izelnakri/qunitx-cli-rust">source</a>
+                  <a href="https://crates.io/crates/qunitx">crates.io</a>
+                  <a href="https://ghcr.io/v2/izelnakri/qunitx/tags/list">docker</a>
+                  <a href="docs/qunitx/">API docs</a>
+                  <a href="coverage/">coverage</a>
+              </header>
+              <main>
+                  <img src="demo.gif" alt="qunitx demo">
+                  <h2>Live output</h2>
+                  <pre><span class="prompt">$</span> <span class="cmd">qunitx test/catalog-test.ts test/checkout-test.ts test/inventory-test.ts</span>
+          '''
+
+          footer = '''</pre>
+              </main>
+          </body>
+          </html>
+          '''
+
+          with open('_site/index.html', 'w') as f:
+              f.write(header + tap_esc + footer)
+
+          print('index.html written successfully')
+          PYEOF
+          python3 /tmp/gen_html.py
+
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+      - uses: actions/deploy-pages@v4
+        id: deploy

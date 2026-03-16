@@ -5,6 +5,7 @@
 [![CI](https://github.com/izelnakri/qunitx-cli-rust/actions/workflows/ci.yml/badge.svg)](https://github.com/izelnakri/qunitx-cli-rust/actions/workflows/ci.yml)
 [![Crates.io](https://img.shields.io/crates/v/qunitx)](https://crates.io/crates/qunitx)
 [![Downloads](https://img.shields.io/crates/d/qunitx)](https://crates.io/crates/qunitx)
+[![Coverage](https://codecov.io/gh/izelnakri/qunitx-cli-rust/graph/badge.svg)](https://codecov.io/gh/izelnakri/qunitx-cli-rust)
 [![Docs](https://img.shields.io/badge/docs-online-blue)](https://izelnakri.github.io/qunitx-cli-rust/docs/qunitx/)
 [![Sponsor](https://img.shields.io/badge/sponsor-%E2%99%A5-pink)](https://github.com/sponsors/izelnakri)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
